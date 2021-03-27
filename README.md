@@ -3,7 +3,7 @@ Workout with Passport.js based Auth and Sec.
 
 ### Used
 
-PassPortJs, mongoose-encryption, ejs, express, node, bootstrap, 
+PassPortJs, mongoose-encryption, md5, bcrypt, ejs, express, node, bootstrap, 
 
 #### Output
 
