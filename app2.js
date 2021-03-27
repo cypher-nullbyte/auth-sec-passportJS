@@ -10,8 +10,8 @@ const passportLocalMongoose=require('passport-local-mongoose');
 
 // const encrypt=require('mongoose-encryption');
 // const md5=require('md5');
-// const bcrypt=require('bcrypt');
-// const saltRounds=10;
+const bcrypt=require('bcrypt');
+const saltRounds=10;
 
 
 const app =express();
@@ -33,17 +33,12 @@ app.use(passport.session());
 
 mongoose.connect('mongodb://127.0.0.1:27017/PassPortUserDB',{useNewUrlParser:true,useUnifiedTopology:true,useCreateIndex:true});
 
-// const userSchema=new mongoose.Schema({
-//     email:{type:String,required:true,unique:true},
-//     password:{type:String,required:true},
-//     },
-//     {timestamps:true}
-// );
 const userSchema=new mongoose.Schema({
-    email:String,
-    password:String
-});
-
+    email:{type:String,required:true,unique:true},
+    password:{type:String,required:true},
+    },
+    {timestamps:true}
+);
 
 userSchema.plugin(passportLocalMongoose);
 
@@ -66,56 +61,62 @@ app.get('/login',(req,res)=>{
     res.render('login')
 });
 
-app.get('/secrets',expressAsyncHandler(async(req,res)=>{
-    if(req.isAuthenticated())
-    {
-        res.render('secrets');
-    }
-    else res.redirect('/login');
-}));
-
-app.get('/logout',(req,res)=>{
-   req.logout();
-   res.redirect('/'); 
-});
-
 app.get('/register',(req,res)=>{
     res.render('register')
 });
 
-app.post('/register',(req,res)=>{
-    // console.log(req.body.username);
-    User.register({username:req.body.username},req.body.password,function(err,user){
+app.post('/register',expressAsyncHandler(async(req,res)=>{
+
+    const hash= await bcrypt.hash(req.body.password,saltRounds);
+    // There is another method too, instead of promise we can use callback
+    // bcrypt.hash(req.body.password,salrounds,(err,hash)=>{/* do ur thing */});
+
+
+    const newUser=new User({
+        email:req.body.username,
+        // password:md5(req.body.password),
+        password:hash,
+    });
+    newUser.save((err)=>{
         if(err)
         {
+            res.send("UserName Already Exists!");
             console.log(err);
-            res.redirect("/");
         }
-        else{
-            passport.authenticate('local')(req,res,()=>{
-                res.redirect('/secrets');
-            });
-        }
+        else res.render('secrets');
     });
-});
+}));
 
 app.post('/login',function(req,res){
     const username=req.body.username;
     const password=req.body.password;
-    const user=new User({
-        username:username,
-        password:password
-    });
-    req.login(user,function(err){
+    // const password=md5(req.body.password);
+
+    User.findOne({email:username},(err,foundUser)=>{
         if(err)
         {
-            console.log(error);
-            res.redirect('/');
+            res.send(err);
+            console.log(err);
         }
-        else{
-            passport.authenticate('local')(req,res,()=>{
-                res.redirect('/secrets');
-            })
+        else
+        {
+            if(foundUser)
+            {
+                // if(foundUser.password===password)
+                // {
+                //     res.render('secrets');
+                // }
+                bcrypt.compare(password,foundUser.password,(err,result)=>{
+                if(result===true)
+                {
+                    res.render('secrets');
+                }
+                    else res.send("Invalid Details!");
+                });
+            }
+            else{
+                res.send("Invalid Details!");
+            }
         }
     });
 }); 
@@ -127,3 +128,4 @@ app.post('/login',function(req,res){
 app.listen(3000,()=>{
     console.log('Server started on port 3000...');
 });
+
