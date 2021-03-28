@@ -115,7 +115,8 @@ app.get('/secrets',expressAsyncHandler(async(req,res)=>{
             {
                 if(foundUsers)
                 {
-                    res.render('secrets',{usersWithSecrets:foundUsers});
+                    const foundSecrets=(foundUsers.map(user=>user.secret)).filter(secret=>secret);
+                    res.render('secrets',{allSecrets:foundSecrets});
                 }
             }
         });
